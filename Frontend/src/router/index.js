@@ -12,6 +12,11 @@ const routes = [
     component: Login
   },
   {
+    path: '/login',
+    name: 'LoginPage',
+    component: Login
+  },
+  {
     path: '/student/home',
     name: 'StudentHome',
     component: StudentHome

@@ -162,7 +162,17 @@ class ScheduleDAO:
         return result[0] if result else None
     
     def get_schedules_by_coach_id(self, coach_id: int) -> List[Dict[str, Any]]:
-        query = "SELECT * FROM schedules WHERE coach_id = ? ORDER BY schedule_date DESC, schedule_time ASC"
+        query = """
+            SELECT s.*, 
+                   st.name as student_name, st.phone as student_phone,
+                   a.name as area_name
+            FROM schedules s
+            LEFT JOIN students st ON s.student_id = st.id
+            LEFT JOIN coaches c ON s.coach_id = c.id
+            LEFT JOIN areas a ON c.area_id = a.id
+            WHERE s.coach_id = ? 
+            ORDER BY s.schedule_date DESC, s.schedule_time ASC
+        """
         return self.db.execute_query(query, (coach_id,))
     
     def get_schedules_by_student_id(self, student_id: int) -> List[Dict[str, Any]]:

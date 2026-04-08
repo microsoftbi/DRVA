@@ -2,7 +2,10 @@
   <div class="admin-home">
     <header class="header">
       <h1>管理员首页</h1>
-      <button @click="goToProfile" class="profile-btn">个人中心</button>
+      <div class="header-actions">
+        <button @click="goToProfile" class="profile-btn">个人中心</button>
+        <button @click="handleLogout" class="logout-btn">登出</button>
+      </div>
     </header>
     
     <div class="nav-tabs">
@@ -295,6 +298,11 @@ const goToProfile = () => {
   router.push('/profile')
 }
 
+const handleLogout = () => {
+  userStore.logout()
+  router.push('/login')
+}
+
 // 区域管理方法
 const getAreas = async () => {
   try {
@@ -583,6 +591,12 @@ onMounted(() => {
   color: #333;
 }
 
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
 .profile-btn {
   padding: 0.5rem 1rem;
   background-color: #42b983;
@@ -590,6 +604,25 @@ onMounted(() => {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.profile-btn:hover {
+  background-color: #359469;
+}
+
+.logout-btn {
+  padding: 0.5rem 1rem;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #cc0000;
 }
 
 .nav-tabs {

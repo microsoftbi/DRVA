@@ -2,14 +2,12 @@
   <div class="coach-home">
     <header class="header">
       <h1>教练首页</h1>
-      <button @click="goToProfile" class="profile-btn">个人中心</button>
+      <div class="header-actions">
+        <button @click="showAddSchedule" class="add-schedule-btn">添加排课</button>
+        <button @click="goToProfile" class="profile-btn">个人中心</button>
+        <button @click="handleLogout" class="logout-btn">登出</button>
+      </div>
     </header>
-    
-    <div class="quick-links">
-      <button @click="showTodaySchedules" class="quick-link-btn">今日已确认课程</button>
-      <button @click="showTomorrowSchedules" class="quick-link-btn">明日已确认课程</button>
-      <button @click="showAddSchedule" class="quick-link-btn">添加排课</button>
-    </div>
     
     <div v-if="showAddForm" class="add-schedule-form">
       <h2>添加排课</h2>
@@ -33,16 +31,55 @@
       </form>
     </div>
     
+    <div class="tabs">
+      <button 
+        @click="activeTab = 'all'" 
+        :class="{ active: activeTab === 'all' }" 
+        class="tab-btn"
+      >
+        所有排课
+      </button>
+      <button 
+        @click="activeTab = 'pending'" 
+        :class="{ active: activeTab === 'pending' }" 
+        class="tab-btn"
+      >
+        待确认排课
+      </button>
+      <button 
+        @click="activeTab = 'confirmed'" 
+        :class="{ active: activeTab === 'confirmed' }" 
+        class="tab-btn"
+      >
+        已确认排课
+      </button>
+    </div>
+    
+    <div class="filter-bar">
+      <label class="filter-label">时间筛选:</label>
+      <select v-model="timeFilter" class="time-filter-select">
+        <option value="all">全部</option>
+        <option value="today">今天</option>
+        <option value="tomorrow">明天</option>
+        <option value="dayAfterTomorrow">后天</option>
+        <option value="thisWeek">本周</option>
+        <option value="nextWeek">下周</option>
+        <option value="thisMonth">本月</option>
+        <option value="nextMonth">下月</option>
+      </select>
+    </div>
+    
     <div class="schedule-list">
-      <h2>我的排课</h2>
-      <div v-if="schedules.length === 0" class="empty-state">
+      <div v-if="filteredSchedules.length === 0" class="empty-state">
         <p>暂无排课</p>
       </div>
-      <div v-for="schedule in schedules" :key="schedule.id" class="schedule-item">
+      <div v-for="schedule in filteredSchedules" :key="schedule.id" class="schedule-item">
         <div class="schedule-info">
           <h3>{{ schedule.schedule_date }}</h3>
           <p>时段: {{ schedule.schedule_time }}</p>
           <p>学员: {{ schedule.student_name || '未预约' }}</p>
+          <p v-if="schedule.student_phone">手机号: {{ schedule.student_phone }}</p>
+          <p v-if="schedule.area_name">所在区域: {{ schedule.area_name }}</p>
           <p>状态: {{ schedule.status }}</p>
         </div>
         <div class="schedule-actions">
@@ -74,7 +111,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 import request from '../utils/request'
@@ -84,6 +121,8 @@ const userStore = useUserStore()
 
 const schedules = ref([])
 const showAddForm = ref(false)
+const activeTab = ref('all')
+const timeFilter = ref('all')
 const newSchedule = ref({
   date: '',
   time: '上午'
@@ -93,16 +132,9 @@ const goToProfile = () => {
   router.push('/profile')
 }
 
-const showTodaySchedules = () => {
-  const today = new Date().toISOString().split('T')[0]
-  filterSchedules(today)
-}
-
-const showTomorrowSchedules = () => {
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowStr = tomorrow.toISOString().split('T')[0]
-  filterSchedules(tomorrowStr)
+const handleLogout = () => {
+  userStore.logout()
+  router.push('/login')
 }
 
 const showAddSchedule = () => {
@@ -124,13 +156,74 @@ const getSchedules = async () => {
   }
 }
 
-const filterSchedules = (date) => {
-  // 过滤指定日期的已确认课程
-  const filtered = schedules.value.filter(schedule => 
-    schedule.schedule_date === date && schedule.status === '已确认'
-  )
-  schedules.value = filtered
+const getDateRange = (filter) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  
+  switch (filter) {
+    case 'today':
+      return [new Date(today), new Date(today)]
+    case 'tomorrow':
+      const tomorrow = new Date(today)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      return [new Date(tomorrow), new Date(tomorrow)]
+    case 'dayAfterTomorrow':
+      const dayAfterTomorrow = new Date(today)
+      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2)
+      return [new Date(dayAfterTomorrow), new Date(dayAfterTomorrow)]
+    case 'thisWeek':
+      const startOfWeek = new Date(today)
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
+      const endOfWeek = new Date(startOfWeek)
+      endOfWeek.setDate(endOfWeek.getDate() + 6)
+      return [startOfWeek, endOfWeek]
+    case 'nextWeek':
+      const startOfNextWeek = new Date(today)
+      startOfNextWeek.setDate(startOfNextWeek.getDate() - startOfNextWeek.getDay() + 7)
+      const endOfNextWeek = new Date(startOfNextWeek)
+      endOfNextWeek.setDate(endOfNextWeek.getDate() + 6)
+      return [startOfNextWeek, endOfNextWeek]
+    case 'thisMonth':
+      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+      return [startOfMonth, endOfMonth]
+    case 'nextMonth':
+      const startOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+      const endOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0)
+      return [startOfNextMonth, endOfNextMonth]
+    default:
+      return [null, null]
+  }
 }
+
+const isDateInRange = (scheduleDate, startDate, endDate) => {
+  if (!startDate || !endDate) return true
+  const date = new Date(scheduleDate)
+  date.setHours(0, 0, 0, 0)
+  return date >= startDate && date <= endDate
+}
+
+const filteredSchedules = computed(() => {
+  let filtered = []
+  
+  switch (activeTab.value) {
+    case 'pending':
+      filtered = schedules.value.filter(schedule => schedule.status === '待确认')
+      break
+    case 'confirmed':
+      filtered = schedules.value.filter(schedule => schedule.status === '已确认')
+      break
+    default:
+      filtered = schedules.value
+  }
+  
+  if (timeFilter.value !== 'all') {
+    const [startDate, endDate] = getDateRange(timeFilter.value)
+    filtered = filtered.filter(schedule => isDateInRange(schedule.schedule_date, startDate, endDate))
+  }
+  
+  return filtered
+})
 
 const addSchedule = async () => {
   try {
@@ -250,23 +343,13 @@ onMounted(() => {
   color: #333;
 }
 
-.profile-btn {
-  padding: 0.5rem 1rem;
-  background-color: #42b983;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.quick-links {
+.header-actions {
   display: flex;
   gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
-.quick-link-btn {
+.add-schedule-btn {
   padding: 0.5rem 1rem;
   background-color: #42b983;
   color: white;
@@ -276,8 +359,36 @@ onMounted(() => {
   transition: background-color 0.3s;
 }
 
-.quick-link-btn:hover {
+.add-schedule-btn:hover {
   background-color: #359469;
+}
+
+.profile-btn {
+  padding: 0.5rem 1rem;
+  background-color: #42b983;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.profile-btn:hover {
+  background-color: #359469;
+}
+
+.logout-btn {
+  padding: 0.5rem 1rem;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.logout-btn:hover {
+  background-color: #cc0000;
 }
 
 .add-schedule-form {
@@ -334,9 +445,75 @@ onMounted(() => {
   cursor: pointer;
 }
 
-.schedule-list h2 {
-  margin-bottom: 1rem;
+.tabs {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid #eee;
+}
+
+.tab-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: white;
+  color: #666;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 16px;
+}
+
+.tab-btn:hover {
+  color: #42b983;
+}
+
+.tab-btn.active {
+  color: #42b983;
+  border-bottom-color: #42b983;
+  font-weight: bold;
+}
+
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.filter-label {
+  font-weight: bold;
   color: #333;
+  font-size: 16px;
+}
+
+.time-filter-select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  color: #333;
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.3s;
+}
+
+.time-filter-select:hover {
+  border-color: #42b983;
+}
+
+.time-filter-select:focus {
+  outline: none;
+  border-color: #42b983;
+  box-shadow: 0 0 0 2px rgba(66, 185, 131, 0.2);
+}
+
+.schedule-list {
+  margin-top: 1rem;
 }
 
 .schedule-item {
