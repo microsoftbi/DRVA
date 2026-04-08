@@ -73,6 +73,8 @@
     <!-- 教练管理 -->
     <div v-if="activeTab === 2" class="tab-content">
       <h2>教练管理</h2>
+      <button @click="showAddCoachForm = true" class="add-btn">添加教练</button>
+      
       <div class="table-container">
         <table class="data-table">
           <thead>
@@ -106,6 +108,8 @@
     <!-- 学员管理 -->
     <div v-if="activeTab === 3" class="tab-content">
       <h2>学员管理</h2>
+      <button @click="showAddStudentForm = true" class="add-btn">添加学员</button>
+      
       <div class="table-container">
         <table class="data-table">
           <thead>
@@ -138,12 +142,21 @@
     <!-- 排课管理 -->
     <div v-if="activeTab === 4" class="tab-content">
       <h2>排课管理</h2>
+      <button @click="showAddScheduleForm = true" class="add-btn">添加排课</button>
       <div class="filter-section">
         <label for="timeFilter">时间筛选：</label>
         <select id="timeFilter" v-model="selectedTimeFilter" @change="filterSchedules">
           <option v-for="option in timeFilterOptions" :key="option.value" :value="option.value">
             {{ option.label }}
           </option>
+        </select>
+        <label for="statusFilter">状态筛选：</label>
+        <select id="statusFilter" v-model="selectedStatusFilter" @change="filterSchedules">
+          <option value="all">全部</option>
+          <option value="待确认">待确认</option>
+          <option value="已确认">已确认</option>
+          <option value="已完成">已完成</option>
+          <option value="已取消">已取消</option>
         </select>
       </div>
       <div class="table-container">
@@ -172,12 +185,211 @@
               <td>{{ schedule.student_name || '未预约' }}</td>
               <td>{{ schedule.status }}</td>
               <td>
+                <button @click="openBookScheduleForm(schedule)" class="book-btn" v-if="!schedule.student_id">预约</button>
                 <button @click="confirmSchedule(schedule.id)" class="confirm-btn" v-if="schedule.status === '待确认' && schedule.student_id">确认</button>
                 <button @click="deleteSchedule(schedule.id)" class="delete-btn">删除</button>
               </td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+    
+    <!-- 添加教练模态框 -->
+    <div v-if="showAddCoachForm" class="modal-overlay" @click.self="showAddCoachForm = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>添加教练</h3>
+          <button @click="showAddCoachForm = false" class="modal-close">&times;</button>
+        </div>
+        <form @submit.prevent="addCoach">
+          <div class="form-group">
+            <label for="coachName">姓名</label>
+            <input
+              type="text"
+              id="coachName"
+              v-model="newCoach.name"
+              placeholder="请输入姓名"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="coachPhone">手机号</label>
+            <input
+              type="tel"
+              id="coachPhone"
+              v-model="newCoach.phone"
+              placeholder="请输入手机号"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="coachEmail">邮箱</label>
+            <input
+              type="email"
+              id="coachEmail"
+              v-model="newCoach.email"
+              placeholder="请输入邮箱"
+            />
+          </div>
+          <div class="form-group">
+            <label for="coachArea">区域</label>
+            <select id="coachArea" v-model="newCoach.area_id" required>
+              <option value="">请选择区域</option>
+              <option v-for="area in areas" :key="area.id" :value="area.id">
+                {{ area.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="coachPassword">密码</label>
+            <input
+              type="password"
+              id="coachPassword"
+              v-model="newCoach.password"
+              placeholder="请输入密码"
+              required
+            />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="submit-btn">保存</button>
+            <button type="button" @click="showAddCoachForm = false" class="cancel-btn">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- 添加学员模态框 -->
+    <div v-if="showAddStudentForm" class="modal-overlay" @click.self="showAddStudentForm = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>添加学员</h3>
+          <button @click="showAddStudentForm = false" class="modal-close">&times;</button>
+        </div>
+        <form @submit.prevent="addStudent">
+          <div class="form-group">
+            <label for="studentName">姓名</label>
+            <input
+              type="text"
+              id="studentName"
+              v-model="newStudent.name"
+              placeholder="请输入姓名"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="studentPhone">手机号</label>
+            <input
+              type="tel"
+              id="studentPhone"
+              v-model="newStudent.phone"
+              placeholder="请输入手机号"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="studentEmail">邮箱</label>
+            <input
+              type="email"
+              id="studentEmail"
+              v-model="newStudent.email"
+              placeholder="请输入邮箱"
+            />
+          </div>
+          <div class="form-group">
+            <label for="studentArea">区域</label>
+            <select id="studentArea" v-model="newStudent.area_id" required>
+              <option value="">请选择区域</option>
+              <option v-for="area in areas" :key="area.id" :value="area.id">
+                {{ area.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="studentPassword">密码</label>
+            <input
+              type="password"
+              id="studentPassword"
+              v-model="newStudent.password"
+              placeholder="请输入密码"
+              required
+            />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="submit-btn">保存</button>
+            <button type="button" @click="showAddStudentForm = false" class="cancel-btn">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- 添加排课模态框 -->
+    <div v-if="showAddScheduleForm" class="modal-overlay" @click.self="showAddScheduleForm = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>添加排课</h3>
+          <button @click="showAddScheduleForm = false" class="modal-close">&times;</button>
+        </div>
+        <form @submit.prevent="addSchedule">
+          <div class="form-group">
+            <label for="scheduleCoach">教练</label>
+            <select id="scheduleCoach" v-model="newSchedule.coach_id" required>
+              <option value="">请选择教练</option>
+              <option v-for="coach in coaches" :key="coach.id" :value="coach.id">
+                {{ coach.name }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="scheduleDate">日期</label>
+            <input
+              type="date"
+              id="scheduleDate"
+              v-model="newSchedule.schedule_date"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="scheduleTime">时段</label>
+            <select id="scheduleTime" v-model="newSchedule.schedule_time" required>
+              <option value="上午">上午</option>
+              <option value="下午">下午</option>
+              <option value="晚上">晚上</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="submit-btn">保存</button>
+            <button type="button" @click="showAddScheduleForm = false" class="cancel-btn">取消</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <!-- 预约排课模态框 -->
+    <div v-if="showBookScheduleForm" class="modal-overlay" @click.self="showBookScheduleForm = false">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>预约排课</h3>
+          <button @click="showBookScheduleForm = false" class="modal-close">&times;</button>
+        </div>
+        <div v-if="bookingSchedule" class="schedule-info-display">
+          <p><strong>教练：</strong>{{ bookingSchedule.coach_name }}</p>
+          <p><strong>日期：</strong>{{ bookingSchedule.schedule_date }}</p>
+          <p><strong>时段：</strong>{{ bookingSchedule.schedule_time }}</p>
+        </div>
+        <div class="form-group">
+          <label for="selectStudent">选择学员</label>
+          <select id="selectStudent" v-model="selectedStudentId" required>
+            <option value="">请选择学员</option>
+            <option v-for="student in students" :key="student.id" :value="student.id">
+              {{ student.name }} - {{ student.phone }}
+            </option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" @click="bookSchedule" class="submit-btn">确认预约</button>
+          <button type="button" @click="showBookScheduleForm = false" class="cancel-btn">取消</button>
+        </div>
       </div>
     </div>
   </div>
@@ -207,14 +419,40 @@ const newArea = ref({ name: '' })
 
 // 教练管理
 const coaches = ref([])
+const showAddCoachForm = ref(false)
+const newCoach = ref({
+  name: '',
+  phone: '',
+  email: '',
+  area_id: '',
+  password: ''
+})
 
 // 学员管理
 const students = ref([])
+const showAddStudentForm = ref(false)
+const newStudent = ref({
+  name: '',
+  phone: '',
+  email: '',
+  area_id: '',
+  password: ''
+})
 
 // 排课管理
 const schedules = ref([])
 const allSchedules = ref([])
 const selectedTimeFilter = ref('all')
+const selectedStatusFilter = ref('all')
+const showAddScheduleForm = ref(false)
+const newSchedule = ref({
+  coach_id: '',
+  schedule_date: '',
+  schedule_time: '上午'
+})
+const showBookScheduleForm = ref(false)
+const bookingSchedule = ref(null)
+const selectedStudentId = ref('')
 
 const timeFilterOptions = [
   { value: 'all', label: '全部' },
@@ -277,21 +515,23 @@ const getDateRange = (filter) => {
 }
 
 const filterSchedules = () => {
-  if (selectedTimeFilter.value === 'all') {
-    schedules.value = [...allSchedules.value]
-    return
+  let filtered = [...allSchedules.value]
+  
+  if (selectedTimeFilter.value !== 'all') {
+    const range = getDateRange(selectedTimeFilter.value)
+    if (range) {
+      filtered = filtered.filter(schedule => {
+        const scheduleDate = new Date(schedule.schedule_date)
+        return scheduleDate >= range.start && scheduleDate <= range.end
+      })
+    }
   }
   
-  const range = getDateRange(selectedTimeFilter.value)
-  if (!range) {
-    schedules.value = [...allSchedules.value]
-    return
+  if (selectedStatusFilter.value !== 'all') {
+    filtered = filtered.filter(schedule => schedule.status === selectedStatusFilter.value)
   }
   
-  schedules.value = allSchedules.value.filter(schedule => {
-    const scheduleDate = new Date(schedule.schedule_date)
-    return scheduleDate >= range.start && scheduleDate <= range.end
-  })
+  schedules.value = filtered
 }
 
 const goToProfile = () => {
@@ -381,6 +621,34 @@ const getCoaches = async () => {
   }
 }
 
+const addCoach = async () => {
+  try {
+    const response = await request({
+      url: '/coaches/register',
+      method: 'post',
+      data: newCoach.value
+    })
+    
+    if (response.success) {
+      alert('教练添加成功')
+      showAddCoachForm.value = false
+      newCoach.value = {
+        name: '',
+        phone: '',
+        email: '',
+        area_id: '',
+        password: ''
+      }
+      getCoaches()
+    } else {
+      alert(response.message)
+    }
+  } catch (error) {
+    console.error('添加教练失败:', error)
+    alert('添加失败')
+  }
+}
+
 const confirmCoach = async (coachId) => {
   if (confirm('确定要确认该教练吗？')) {
     try {
@@ -461,6 +729,34 @@ const getStudents = async () => {
   }
 }
 
+const addStudent = async () => {
+  try {
+    const response = await request({
+      url: '/students/register',
+      method: 'post',
+      data: newStudent.value
+    })
+    
+    if (response.success) {
+      alert('学员添加成功')
+      showAddStudentForm.value = false
+      newStudent.value = {
+        name: '',
+        phone: '',
+        email: '',
+        area_id: '',
+        password: ''
+      }
+      getStudents()
+    } else {
+      alert(response.message)
+    }
+  } catch (error) {
+    console.error('添加学员失败:', error)
+    alert('添加失败')
+  }
+}
+
 const resetStudentPassword = async (studentId) => {
   const newPassword = prompt('请输入新密码:')
   if (newPassword) {
@@ -517,6 +813,65 @@ const getSchedules = async () => {
     }
   } catch (error) {
     console.error('获取排课失败:', error)
+  }
+}
+
+const addSchedule = async () => {
+  try {
+    const response = await request({
+      url: '/schedules',
+      method: 'post',
+      data: newSchedule.value
+    })
+    
+    if (response.success) {
+      alert('排课添加成功')
+      showAddScheduleForm.value = false
+      newSchedule.value = {
+        coach_id: '',
+        schedule_date: '',
+        schedule_time: '上午'
+      }
+      getSchedules()
+    } else {
+      alert(response.message)
+    }
+  } catch (error) {
+    console.error('添加排课失败:', error)
+    alert('添加失败')
+  }
+}
+
+const openBookScheduleForm = (schedule) => {
+  bookingSchedule.value = schedule
+  selectedStudentId.value = ''
+  showBookScheduleForm.value = true
+}
+
+const bookSchedule = async () => {
+  if (!selectedStudentId.value) {
+    alert('请选择学员')
+    return
+  }
+  
+  try {
+    const response = await request({
+      url: `/schedules/${bookingSchedule.value.id}/book?student_id=${selectedStudentId.value}`,
+      method: 'put'
+    })
+    
+    if (response.success) {
+      alert('预约成功')
+      showBookScheduleForm.value = false
+      bookingSchedule.value = null
+      selectedStudentId.value = ''
+      getSchedules()
+    } else {
+      alert(response.message)
+    }
+  } catch (error) {
+    console.error('预约排课失败:', error)
+    alert('预约失败')
   }
 }
 
@@ -707,7 +1062,8 @@ onMounted(() => {
   color: #666;
 }
 
-.form-group input {
+.form-group input,
+.form-group select {
   width: 100%;
   padding: 0.5rem;
   border: 1px solid #ddd;
@@ -798,5 +1154,90 @@ onMounted(() => {
   border-radius: 4px;
   cursor: pointer;
   margin-right: 0.5rem;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #333;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #666;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.3s;
+}
+
+.modal-close:hover {
+  color: #333;
+}
+
+.schedule-info-display {
+  background-color: #f5f5f5;
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.schedule-info-display p {
+  margin: 0.5rem 0;
+  color: #333;
+}
+
+.book-btn {
+  padding: 0.3rem 0.8rem;
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  transition: background-color 0.3s;
+}
+
+.book-btn:hover {
+  background-color: #f57c00;
 }
 </style>
